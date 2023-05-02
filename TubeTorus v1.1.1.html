@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Torus Generator</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+  }
+
+  form {
+    margin-bottom: 1rem;
+  }
+
+  input {
+    margin-bottom: 0.5rem;
+  }
+
+  .container {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .form-container {
+    width: 50%;
+  }
+
+  #color-key {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+
+  .color-key-item {
+    display: flex;
+    align-items: center;
+    margin-right: 1rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .color-key-item span {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-right: 0.5rem;
+  }
+
+  .tooltip {
+    position: absolute;
+    background-color: #f9f9f9;
+    color: black;
+    border: 1px solid #d3d3d3;
+    border-radius: 5px;
+    padding: 5px;
+    z-index: 10;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+</style>
+</head>
+
+<body style="background-color:rgb(91, 91, 91);">
+  <div class="container">
+    <div class="form-container">
+      <form id="inputForm">
+        <label for="num">Number:</label>
+        <input type="text" id="num" name="num" value="113523749886476259"><br><br>
+
+        <label for="base">Base:</label>
+        <input type="text" id="base" name="base" value="10"><br><br>
+
+        <label for="canvasSize">Canvas Size:</label>
+        <input type="number" id="canvasSize" name="canvasSize" value="600"><br><br>
+
+        <input type="button" id="generateBtn" value="Generate Torus">
+      </form>
+    </div>
+    <div class="form-container">
+      <form id="inputForm2">
+        <label for="num1">Number 1:</label>
+        <input type="text" id="num1" name="num1" value="113523749886476259"><br><br>
+
+        <label for="num2">Number 2:</label>
+        <input type="text" id="num2" name="num2"><br><br>
+
+        <label for="fromBase">From Base:</label>
+        <input type="number" id="fromBase" name="fromBase" value="10" min="2" max="36"><br><br>
+
+        <label for="toBase">To Base:</label>
+        <input type="number" id="toBase" name="toBase" value="10" min="2" max="36"><br><br>
+
+        <input type="button" id="convertBtn" value="Convert">
+        <input type="button" id="toggleBtn" value="Toggle Direction">
+      </form>
+    </div>
+  </div>
+  <div id="color-key"></div>
+  <div style="position: relative;">
+    <canvas id="canvas" style="display: block;"></canvas>
+  </div>
+
+  <script>
+    document.getElementById('convertBtn').addEventListener('click', convertBase);
+    document.getElementById('toggleBtn').addEventListener('click', toggleDirection);
+
+    let leftToRight = true;
+    let edgesInfo = [];
+
+
+
+    function baseConverter(number, fromBase, toBase) {
+      const decimal = parseInt(number, fromBase);
+      return decimal.toString(toBase);
+    }
+
+    function convertBase() {
+      let num1 = document.getElementById("num1").value;
+      let num2 = document.getElementById("num2").value;
+      let fromBase = parseInt(document.getElementById("fromBase").value);
+      let toBase = parseInt(document.getElementById("toBase").value);
+
+      if (leftToRight) {
+        const convertedNumber = baseConverter(num1, fromBase, toBase);
+        document.getElementById("num2").value = convertedNumber;
+      } else {
+        const convertedNumber = baseConverter(num2, toBase, fromBase);
+        document.getElementById("num1").value = convertedNumber;
+      }
+    }
+
+    function toggleDirection() {
+      leftToRight = !leftToRight;
+      document.getElementById("toggleBtn").value = leftToRight ? "Toggle Direction" : "Toggle Direction (Reversed)";
+    }
+
+    document.getElementById('generateBtn').addEventListener('click', generateTorus);
+
+    function generateTorus() {
+
+      let num = document.getElementById("num").value;
+      let base = parseInt(document.getElementById("base").value);
+      let canvasSize = parseInt(document.getElementById("canvasSize").value);
+
+      const colors = [
+        "#FF5733", "#FFC300", "#DAF7A6", "#FF9D00", "#C70039", "#900C3F", "#581845", "#3498DB", "#16A085", "#F1C40F",
+        "#6C3483", "#1F618D", "#F39C12", "#D35400", "#C0392B", "#E74C3C", "#27AE60", "#2980B9", "#8E44AD", "#2E4053",
+        "#FFF033", "#AEB6BF", "#2C3E50", "#1ABC9C", "#7D3C98", "#DFFF00", "#FF5733", "#5D6D7E", "#5499C7", "#AF7AC5",
+        "#73C6B6", "#1A5276", "#935116", "#5B2C6F", "#8E2800", "#DFFF00"
+      ];
+      const digitalRoot = (n, base) => (n - 1) % (base - 1) + 1;
+      let graph = [];
+      const tooltip = document.getElementById('tooltip');
+
+
+      const generateGraph = (number, base, colors, canvasSize) => {
+        let digits = [...number];
+        let n = digits.length;
+        let vertices = [];
+
+        for (let i = 0; i < n; i++) {
+          for (let j = 0; j < n; j++) {
+            vertices.push([i, j]);
+          }
+        }
+
+        let edges = vertices.map(([i, j]) => [
+          i,
+          j,
+          digitalRoot(parseInt(digits[i], base) + parseInt(digits[j], base), base)
+        ]);
+
+        let nodes = digits.map((digit, index) => [index, digit]);
+
+        let radius = canvasSize / 2 - 100;
+
+
+        graph = nodes.map(([i, digit]) => {
+          let angle = (2 * Math.PI / n) * i - Math.PI / 2;
+          let x = Math.round(canvasSize / 2 + radius * Math.cos(angle));
+          let y = Math.round(canvasSize / 2 + radius * Math.sin(angle));
+          return {
+            x: x,
+            y: y,
+            value: digit,
+            index: i
+          };
+        });
+
+        // Draw the numbers with a larger radius
+        let numberRadius = radius + 20;
+        let numbers = nodes.map(([i, digit]) => {
+          let angle = (2 * Math.PI / n) * i - Math.PI / 2;
+          let x = Math.round(canvasSize / 2 + numberRadius * Math.cos(angle));
+          let y = Math.round(canvasSize / 2 + numberRadius * Math.sin(angle));
+          return {
+            x: x,
+            y: y,
+            value: digit,
+            index: i
+          };
+        });
+
+
+
+        const tooltip = document.getElementById('tooltip');
+        const canvas = document.getElementById("canvas");
+        canvas.addEventListener('mousemove', (e) => {
+          const rect = canvas.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+
+          const hoveredNode = graph.find(node => {
+            const dx = node.x - x;
+            const dy = node.y - y;
+            return Math.sqrt(dx * dx + dy * dy) <= 15;
+          });
+
+          if (hoveredNode) {
+            tooltip.textContent = `Base: ${digitalRoot(parseInt(hoveredNode.value, base), base)}`;
+            tooltip.style.left = `${e.pageX + 10}px`;
+            tooltip.style.top = `${e.pageY + 10}px`;
+            tooltip.style.opacity = 1;
+          } else {
+            tooltip.style.opacity = 0;
+          }
+        });
+
+        let dpr = window.devicePixelRatio || 1;
+        canvas.width = canvasSize * dpr;
+        canvas.height = canvasSize * dpr;
+        canvas.style.width = canvasSize + "px";
+        canvas.style.height = canvasSize + "px";
+        let context = canvas.getContext("2d");
+        context.imageSmoothingEnabled = true;
+        context.scale(dpr, dpr);
+        edges.forEach(([i, j, label]) => {
+          let color = colors[digitalRoot(parseInt(label, base), base) - 1];
+          context.strokeStyle = color;
+          context.lineWidth = 3;
+          context.lineCap = "round";
+          context.beginPath();
+          context.moveTo(graph[i].x, graph[i].y);
+          context.lineTo(graph[j].x, graph[j].y);
+          context.stroke();
+
+          // Add this to store information about the edges for the tooltip
+          edgesInfo.push({
+            x1: graph[i].x,
+            y1: graph[i].y,
+            x2: graph[j].x,
+            y2: graph[j].y,
+            label: label
+          });
+        })
+
+        numbers.forEach(({ x, y, value }) => {
+          let color = colors[digitalRoot(parseInt(value, base), base) - 1];
+          context.fillStyle = color;
+          context.textAlign = "center";
+          context.textBaseline = "middle";
+          context.font = "bold 20px Arial";
+          context.fillText(value, x, y);
+        });
+
+      };
+      generateGraph(num, base, colors, canvasSize);
+      displayColorKey(colors);
+
+    }
+
+    function displayColorKey(colors) {
+      const keyContainer = document.getElementById('color-key');
+      keyContainer.innerHTML = '';
+
+      colors.forEach((color, index) => {
+        const keyItem = document.createElement('div');
+        keyItem.className = 'color-key-item';
+
+        const colorBox = document.createElement('span');
+        colorBox.style.backgroundColor = color;
+
+        const labelText = document.createTextNode(`Base ${index + 1}`);
+
+        keyItem.appendChild(colorBox);
+        keyItem.appendChild(labelText);
+        keyContainer.appendChild(keyItem);
+      });
+    }
+    // Add this event listener for the canvas mousemove event
+    canvas.addEventListener("mousemove", (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+
+      const hoveredEdge = edgesInfo.find(edge => {
+        const distanceToEdge = pointToLineDistance(x, y, edge.x1, edge.y1, edge.x2, edge.y2);
+        return distanceToEdge <= 5;
+      });
+
+      if (hoveredEdge) {
+        tooltip.textContent = `Base: ${digitalRoot(parseInt(hoveredEdge.label, base), base)}`;
+        tooltip.style.left = `${event.pageX + 10}px`;
+        tooltip.style.top = `${event.pageY + 10}px`;
+        tooltip.style.opacity = 1;
+      } else {
+        tooltip.style.opacity = 0;
+      }
+    });
+
+    // Add this function to calculate the distance from a point to a line
+    function pointToLineDistance(x, y, x1, y1, x2, y2) {
+      const A = x - x1;
+      const B = y - y1;
+      const C = x2 - x1;
+      const D = y2 - y1;
+
+      const dot = A * C + B * D;
+      const lenSq = C * C + D * D;
+      const param = dot / lenSq;
+
+      let xx, yy;
+
+      if (param < 0) {
+        xx = x1;
+        yy = y1;
+      } else if (param > 1) {
+        xx = x2;
+        yy = y2;
+      } else {
+        xx = x1 + param * C;
+        yy = y1 + param * D;
+      }
+
+      const dx = x - xx;
+      const dy = y - yy;
+
+      return Math.sqrt(dx * dx + dy * dy);
+
+    }
+  </script>
+  <div id="tooltip"
+    style="position: absolute; opacity: 0; pointer-events: none; background-color: white; padding: 5px; border-radius: 3px;">
+  </div>
+
+</body>
